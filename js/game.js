@@ -110,6 +110,7 @@ function updatePlay(dt) {
   const running = key('shift') && moving && S.energy > 5 && !P.surf;
   let sp = P.surf ? 70 : running ? 96 : 62;
   if (teamHas('corrida')) sp *= 1.2;
+  if (P.mount) sp *= 1.6;
   if (S.energy <= 0) sp *= 0.55;
   if (moving) {
     const l = Math.hypot(mx, my); mx /= l; my /= l;

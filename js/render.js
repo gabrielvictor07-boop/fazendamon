@@ -145,7 +145,7 @@ function drawHUD(gt) {
     if (inRect(x, y, sw - 3, 36)) { tooltip(SPx(m.sp).n + ' nv ' + m.lv + ' · ' + R(Math.max(0, m.hp)) + '/' + maxHp(m) + ' vida', x, y - 12); if (In.mclick) { switchActive(i); In.mclick = false; } }
   });
   // inventário
-  const inv = [['madeira', S.inv.madeira], ['pedra', S.inv.pedra], ['fruta', S.inv.fruta], ['esfera', S.inv.esfera], ['racao', S.inv.racao], ['fogueira', S.inv.fogueira], ['cristal', S.inv.cristal], ['superesfera', S.inv.superesfera]];
+  const inv = hudInv();
   const ix = V.W - 146, iy = V.H - 40; panel(ix, iy, 142, 36, PAN.dark, 0.92);
   inv.forEach(([k, v], i) => { const x = ix + 4 + (i % 4) * 34, y = iy + 3 + Math.floor(i / 4) * 16; icon(k, x, y); text('' + v, x + 13, y + 2, { size: 8, color: v ? '#fbf3e0' : '#7a6e88' }); if (inRect(x, y, 32, 14)) tooltip(ITEM_NAMES[k], x, y - 12); });
   // prompt de interação
