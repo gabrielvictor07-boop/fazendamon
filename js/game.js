@@ -20,9 +20,9 @@ function say(name, lines, onEnd, choices) { G.dialog = { name, lines, i: 0, ch: 
 function newSave(spawn) {
   return {
     v: 1, spawn, time: 7, day: 1, px: 0, py: 0, energy: 100, warmth: 100, active: 0,
-    inv: { madeira: 0, pedra: 0, fruta: 2, esfera: 4, racao: 2, fogueira: 0, tocha: 0 },
+    inv: { madeira: 0, pedra: 0, fruta: 2, esfera: 4, racao: 2, fogueira: 0, tocha: 0, cristal: 0, superesfera: 0, amuleto: 0 },
     team: [], ranch: [], dex: {}, quest: 0, stops: [], shrines: [], fires: [],
-    flags: { talked: false, island: false, intro: false }, stats: { sticks: 0, pebbles: 0, crafted: 0, caught: 0, evolved: 0 },
+    flags: { talked: false, island: false, intro: false }, stats: { sticks: 0, pebbles: 0, crafted: 0, caught: 0, evolved: 0, cristais: 0, supers: 0 },
   };
 }
 function saveGame() { if (!S || G.mode !== 'play') return; S.px = P.x; S.py = P.y; if (Store.set(SAVE_KEY, S)) G.saved = 2; }
@@ -51,6 +51,11 @@ function startPlay(fromSave) {
   spawnCompanion();
   Cam.x = P.x - V.W / 2; Cam.y = P.y - V.H / 2;
   G.mode = 'play'; G.helpT = fromSave ? 12 : 60; G.biome = null;
+  // compatibilidade com saves antigos + estado do hardmode
+  for (const k of ['cristal', 'superesfera', 'amuleto']) S.inv[k] = S.inv[k] || 0;
+  S.stats.cristais = S.stats.cristais || 0; S.stats.supers = S.stats.supers || 0;
+  BIOMES.mordor.spawn = S.flags.hardmode ? BIOMES.mordor.hardSpawn : {};
+  G.gpos = guardianSpot(); G.boss = null;
   if (!S.flags.intro) faiscaCutscene();
 }
 function faiscaCutscene() {
@@ -83,7 +88,7 @@ function canStand(x, y, surf) {
   const W = G.world, g = W.ground(x, y);
   if (g === 'lava') return false;
   if (g === 'water' && !surf) return false;
-  if (g === 'land' || g === 'ice') { if (W.cellB(x, y) === 'mordor') return false; if (W.hitsProp(x, y, 4)) return false; }
+  if (g === 'land' || g === 'ice') { if (W.cellB(x, y) === 'mordor' && !S.flags.hardmode) return false; if (W.hitsProp(x, y, 4)) return false; }
   return true;
 }
 function moveEnt(e, dx, dy, surf) {
@@ -115,7 +120,7 @@ function updatePlay(dt) {
       else if (G.msgCd <= 0) { toast('A água é funda. Você precisa de uma criatura com SURF (Lontrágua).', '#ff9a8a'); G.msgCd = 3; }
     }
     if (P.surf && gNext === 'land') { const t = P.surf; P.surf = false; if (canStand(nx, ny, false)) { P.x = nx; P.y = ny; } else P.surf = t; if (!P.surf) { Snd.play('splash'); spawnCompanion(); } }
-    if ((W.ground(nx, ny) === 'land' || W.ground(nx, ny) === 'ice') && W.cellB(nx, ny) === 'mordor' && G.msgCd <= 0) {
+    if ((W.ground(nx, ny) === 'land' || W.ground(nx, ny) === 'ice') && W.cellB(nx, ny) === 'mordor' && !S.flags.hardmode && G.msgCd <= 0) {
       G.msgCd = 4; say('', ['Uma névoa cinzenta e pesada bloqueia o caminho.', 'Dizem que só quem derrotar o Guardião do Ermo vai conseguir passar. (Em breve: Hardmode)']);
       for (let i = 0; i < 20; i++) FX.add({ x: nx + rand(-30, 30), y: ny + rand(-20, 10), vy: -rand(10, 30), life: rand(0.6, 1.2), color: pick(['#6a3a8a', '#3a1a4a', '#9a6ac0']), size: 2, fade: true });
     }
@@ -130,7 +135,7 @@ function updatePlay(dt) {
   S.energy = clamp(S.energy - dt * (0.07 + (running ? 0.45 : 0)), 0, 100);
   const biome = P.surf ? null : W.cellB(P.x, P.y);
   const nearFire = W.fires.some(f => f.lit && dist(f.x, f.y, P.x, P.y) < 70);
-  const cold = biome === 'taiga' && !teamHas('aquecer') && !teamHas('pelagem') && !nearFire;
+  const cold = biome === 'taiga' && !S.inv.amuleto && !teamHas('aquecer') && !teamHas('pelagem') && !nearFire;
   S.warmth = clamp(S.warmth + dt * (cold ? -6 : 18), 0, 100);
   if (S.warmth <= 0) { S.energy = Math.max(0, S.energy - dt * 3); if (G.msgCd <= 0) { toast('Você está congelando! Fique perto de uma fogueira ou leve um Brasinha.', '#9ad8f4'); G.msgCd = 5; } }
   if (nearFire && G.rest) { S.energy = Math.min(100, S.energy + dt * 9); }
@@ -141,6 +146,9 @@ function updatePlay(dt) {
   // ---- teclas ----
   if (pressed('e') || pressed(' ')) interact();
   if (pressed('q') || In.rclick) throwOrb();
+  if (pressed('g')) throwOrb(true);
+  if (biome === 'mordor' && !S.flags.ermo) { S.flags.ermo = true; toast('Você pisou no Ermo Cinzento. Cuidado!', '#c890ff'); }
+  updateBoss(dt);
   if (pressed('f')) { const t = nearestWild(150); if (t && C) { C.target = t; Snd.play('click'); } }
   if (pressed('h')) useRation();
   if (pressed('r')) { if (S.inv.fruta > 0) { S.inv.fruta--; S.energy = Math.min(100, S.energy + 15); toast('Você comeu uma fruta. +15 energia', '#8ad860'); Snd.play('pick'); } else toast('Sem frutas.', '#ff9a8a'); }
@@ -239,6 +247,7 @@ function hurtPlayer(src) {
   if (src) { const a = Math.atan2(P.y - src.y, P.x - src.x); moveEnt(P, Math.cos(a) * 10, Math.sin(a) * 10, !!P.surf); }
 }
 function knockOut(w) {
+  if (SPx(w.sp).boss) { defeatBoss(w); return; }
   w.ko = true; w.hp = 0; w.state = 'ko'; w.koT = 12; Snd.play('faint');
   FX.text(w.x, w.y - SPx(w.sp).h - 10, 'Nocaute! Jogue a esfera (Q)', '#ffe070', 6);
   if (C) gainXp(C.m, 8 + w.lv * 5);
@@ -280,7 +289,7 @@ function spawnWilds(dt) {
     if (W.villages.some(v => dist(v.x, v.y, x, y) < 150)) continue;
     let tot = 0; for (const k in B.spawn) tot += B.spawn[k]; let roll = rand(tot), sp = null;
     for (const k in B.spawn) { roll -= B.spawn[k]; if (roll <= 0) { sp = k; break; } } sp = sp || Object.keys(B.spawn)[0];
-    let lv = irand(B.lv[0], B.lv[1]); if (SPx(sp).evo === undefined && !['nevisco', 'bambule', 'lontragua', 'coralume'].includes(sp)) lv += 3;
+    let lv = irand(B.lv[0], B.lv[1]) + (S.flags.hardmode ? 3 : 0); if (SPx(sp).evo === undefined && !['nevisco', 'bambule', 'lontragua', 'coralume'].includes(sp)) lv += 3;
     WILD.push(makeWild(sp, lv, x, y)); break;
   }
   // criaturas rezando nos santuários
@@ -297,7 +306,7 @@ function updateWilds(dt) {
   for (const w of WILD) {
     const sp = SPx(w.sp); w.t += dt; w.hitT -= dt;
     const dP = dist(w.x, w.y, P.x, P.y);
-    if (dP < 260 && !S.dex[w.sp]) { S.dex[w.sp] = 1; toast('Nova criatura vista: ' + sp.n, '#c8e8ff'); }
+    if (dP < 260 && !S.dex[w.sp] && !sp.boss) { S.dex[w.sp] = 1; toast('Nova criatura vista: ' + sp.n, '#c8e8ff'); }
     if (w.pray) { w.moving = false; if (Math.random() < dt * 1.5) FX.add({ x: w.x + rand(-4, 4), y: w.y - sp.h, vz: 12, life: 1, color: SHRINE_COL[w.shrine.biome], type: 'star' }); continue; }
     if (w.caught) continue;
     if (w.ko) { w.koT -= dt; w.moving = false; if (w.koT <= 0) { w.ko = false; w.hp = R(w.max * 0.3); w.state = 'flee'; w.st = 3; } continue; }
@@ -320,7 +329,7 @@ function updateWilds(dt) {
         if (d <= range + 4 && w.cd <= 0) { w.cd = 1.3 / sp.spd; w.hits = (w.hits || 0) + 1; attack(w, w.sp, atkOf(w) * 0.8, w.target === 'comp' ? C : 'player', 'wild', w.hits % 4 === 0); }
       }
     }
-    if (mx || my) { const nx = w.x + mx * spd * dt, ny = w.y + my * spd * dt; if (W.ground(nx, ny) === 'land' && W.cellB(nx, ny) !== 'mordor') { w.x = nx; w.y = ny; } else { w.dx = -w.dx; w.dy = -w.dy; } if (Math.abs(mx) > 0.1 && w.state !== 'fight') w.flip = mx < 0; w.moving = true; } else w.moving = false;
+    if (mx || my) { const nx = w.x + mx * spd * dt, ny = w.y + my * spd * dt; if (W.ground(nx, ny) === 'land' && (S.flags.hardmode || W.cellB(nx, ny) !== 'mordor')) { w.x = nx; w.y = ny; } else { w.dx = -w.dx; w.dy = -w.dy; } if (Math.abs(mx) > 0.1 && w.state !== 'fight') w.flip = mx < 0; w.moving = true; } else w.moving = false;
   }
   // tirar os distantes
   WILD = WILD.filter(w => { if (w.caught) return false; const far = dist(w.x, w.y, P.x, P.y) > (w.pray ? 520 : 650); if (far && w.pray && w.shrine) w.shrine.pray = null; return !far || w.tame; });
@@ -341,12 +350,13 @@ function updateShots(dt) {
   SHOTS = SHOTS.filter(s => !s.done);
 }
 // ================= CAPTURA =================
-function throwOrb() {
-  if (S.inv.esfera <= 0) { toast('Sem esferas. Crie com madeira + pedra (C).', '#ff9a8a'); Snd.play('deny'); return; }
-  let [tx, ty] = G.mouseWorld; if (C && C.target && (pressed('q'))) { const w = wildAt(tx, ty); if (!w) { tx = C.target.x; ty = C.target.y; } }
+function throwOrb(sup) {
+  const kind = sup ? 'superesfera' : 'esfera';
+  if (S.inv[kind] <= 0) { toast(sup ? 'Sem Super Esferas. Crie com cristal (C).' : 'Sem esferas. Crie com madeira + pedra (C).', '#ff9a8a'); Snd.play('deny'); return; }
+  let [tx, ty] = G.mouseWorld; if (C && C.target && (pressed('q') || pressed('g'))) { const w = wildAt(tx, ty); if (!w) { tx = C.target.x; ty = C.target.y; } }
   const d = dist(P.x, P.y, tx, ty); if (d > 140) { const a = Math.atan2(ty - P.y, tx - P.x); tx = P.x + Math.cos(a) * 140; ty = P.y + Math.sin(a) * 140; }
-  S.inv.esfera--; Snd.play('throw');
-  ORBS.push({ x0: P.x, y0: P.y - 14, x: P.x, y: P.y, tx, ty, t: 0, dur: 0.45, state: 'fly', z: 0 });
+  S.inv[kind]--; if (sup) S.stats.supers++; Snd.play('throw');
+  ORBS.push({ sup, x0: P.x, y0: P.y - 14, x: P.x, y: P.y, tx, ty, t: 0, dur: 0.45, state: 'fly', z: 0 });
 }
 function updateOrbs(dt) {
   for (const o of ORBS) {
@@ -356,9 +366,10 @@ function updateOrbs(dt) {
       if (k >= 1) {
         let w = null, bd = 16; for (const c of WILD) { if (c.tame || c.caught) continue; const d = dist(c.x, c.y - 4, o.tx, o.ty); if (d < bd) { bd = d; w = c; } }
         if (!w) { o.state = 'done'; FX.burst(o.x, o.y, 6, { speed: [10, 30], life: [0.2, 0.4], color: '#c8b890' }); toast('Errou! A esfera se perdeu.', '#ff9a8a'); continue; }
+        if (SPx(w.sp).boss) { o.state = 'done'; toast('Não dá pra capturar o Guardião!', '#ff9a8a'); Snd.play('deny'); continue; }
         if (w.pray) { o.state = 'done'; toast('Essa criatura está rezando. Deixe ela em paz.', '#c8e8ff'); Snd.play('deny'); continue; }
         o.w = w; w.caught = 'trying'; o.state = 'shake'; o.t = 0; o.x = w.x; o.y = w.y; o.z = 0;
-        const sp = SPx(w.sp); o.chance = clamp(sp.catch * (1.25 - w.hp / w.max) + (w.ko ? 0.35 : 0), 0.04, 0.95);
+        const sp = SPx(w.sp); o.chance = clamp(sp.catch * (1.25 - w.hp / w.max) + (w.ko ? 0.35 : 0) + (o.sup ? 0.3 : 0), 0.04, 0.97);
         o.ok = Math.random() < o.chance; o.shakes = o.ok ? 3 : irand(0, 2);
         FX.burst(w.x, w.y - 8, 12, { speed: [30, 70], life: [0.2, 0.5], color: ['#ffffff', '#8ad860'] }); Snd.play('catch');
       }
@@ -398,7 +409,7 @@ function findInteract() {
   });
   return best;
 }
-const NEED = { tree: 'cortar', bamboo: 'cortar', boulder: 'forca', rock: 'forca' };
+const NEED = { tree: 'cortar', bamboo: 'cortar', boulder: 'forca', rock: 'forca', cristal: 'forca' };
 function interactLabel(it) {
   if (!it) return null;
   if (it.type === 'npc') return ['Conversar com ' + it.o.name, null];
@@ -408,7 +419,7 @@ function interactLabel(it) {
   if (o.kind === 'shrine') return ['Rezar no santuário', null];
   if (o.kind === 'fire') return o.lit ? [G.rest ? 'Levantar' : 'Descansar na fogueira', null] : (teamHas('acender') ? ['Acender (' + SPx(teamHas('acender').sp).n + ')', null] : ['Acender', 'precisa de Acender']);
   const nd = NEED[o.harvest];
-  const lab = { tree: 'Cortar árvore', bamboo: 'Cortar bambu', boulder: 'Quebrar pedra', rock: 'Quebrar pedra', berry: 'Colher frutas', stick: 'Pegar galho', pebble: 'Pegar pedrinha' }[o.harvest];
+  const lab = { tree: 'Cortar árvore', bamboo: 'Cortar bambu', boulder: 'Quebrar pedra', rock: 'Quebrar pedra', cristal: 'Minerar cristal', berry: 'Colher frutas', stick: 'Pegar galho', pebble: 'Pegar pedrinha' }[o.harvest];
   if (nd) { const m = teamHas(nd); return m ? [lab + ' (' + SPx(m.sp).n + ')', null] : [lab, 'precisa de ' + ABIL[nd].n]; }
   return [lab, null];
 }
@@ -435,6 +446,7 @@ function interact() {
   else if (o.harvest === 'boulder' || o.harvest === 'rock') { give('pedra', o.harvest === 'boulder' ? 3 : 2); S.energy -= 3; Snd.play('rock'); shake(0.2); FX.burst(o.x, o.y - 5, 16, { speed: [30, 80], life: [0.3, 0.7], color: ['#b8bec4', '#8a94a0', '#e2e6ea'], vz: [30, 70], g: 200 }); o.gone = true; REGROW.push({ o, t: 200 }); }
   else if (o.harvest === 'berry') { give('fruta', 2); Snd.play('pick'); const gr = teamHas('crescer'); if (gr) toast(SPx(gr.sp).n + ' usou Crescer: as frutas brotaram de novo!', '#8ad860'); else { o.spr = o.empty; o.harvest = null; REGROW.push({ o, t: 90, kind: 'berry' }); } }
   else if (o.harvest === 'stick') { give('madeira', 1); S.stats.sticks++; Snd.play('pick'); o.gone = true; REGROW.push({ o, t: 150 }); }
+  else if (o.harvest === 'cristal') { give('cristal', 1); S.stats.cristais++; S.energy -= 4; Snd.play('ice'); shake(0.2); FX.burst(o.x, o.y - 5, 16, { speed: [30, 80], life: [0.3, 0.7], color: ['#c890ff', '#7a3ac8', '#ffffff'], vz: [30, 70], g: 200 }); o.gone = true; REGROW.push({ o, t: 240 }); }
   else if (o.harvest === 'pebble') { give('pedra', 1); S.stats.pebbles++; Snd.play('pick'); o.gone = true; REGROW.push({ o, t: 150 }); }
   S.energy = Math.max(0, S.energy);
 }

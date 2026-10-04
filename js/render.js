@@ -145,9 +145,9 @@ function drawHUD(gt) {
     if (inRect(x, y, sw - 3, 36)) { tooltip(SPx(m.sp).n + ' nv ' + m.lv + ' · ' + R(Math.max(0, m.hp)) + '/' + maxHp(m) + ' vida', x, y - 12); if (In.mclick) { switchActive(i); In.mclick = false; } }
   });
   // inventário
-  const inv = [['madeira', S.inv.madeira], ['pedra', S.inv.pedra], ['fruta', S.inv.fruta], ['esfera', S.inv.esfera], ['racao', S.inv.racao], ['fogueira', S.inv.fogueira]];
-  const ix = V.W - 112, iy = V.H - 40; panel(ix, iy, 108, 36, PAN.dark, 0.92);
-  inv.forEach(([k, v], i) => { const x = ix + 4 + (i % 3) * 35, y = iy + 3 + Math.floor(i / 3) * 16; icon(k, x, y); text('' + v, x + 13, y + 2, { size: 8, color: v ? '#fbf3e0' : '#7a6e88' }); if (inRect(x, y, 32, 14)) tooltip(ITEM_NAMES[k], x, y - 12); });
+  const inv = [['madeira', S.inv.madeira], ['pedra', S.inv.pedra], ['fruta', S.inv.fruta], ['esfera', S.inv.esfera], ['racao', S.inv.racao], ['fogueira', S.inv.fogueira], ['cristal', S.inv.cristal], ['superesfera', S.inv.superesfera]];
+  const ix = V.W - 146, iy = V.H - 40; panel(ix, iy, 142, 36, PAN.dark, 0.92);
+  inv.forEach(([k, v], i) => { const x = ix + 4 + (i % 4) * 34, y = iy + 3 + Math.floor(i / 4) * 16; icon(k, x, y); text('' + v, x + 13, y + 2, { size: 8, color: v ? '#fbf3e0' : '#7a6e88' }); if (inRect(x, y, 32, 14)) tooltip(ITEM_NAMES[k], x, y - 12); });
   // prompt de interação
   if (!G.dialog && !G.cut) {
     const it = findInteract(), lab = interactLabel(it);
@@ -242,19 +242,19 @@ function drawTeam(M) {
     const ry = y + 28 + 6 * 27 + 2; text('Rancho (' + S.ranch.length + '): clique pra trazer pra equipe', x + 8, ry, { size: 6, color: '#b8acc4' });
     let cx2 = x + 8; S.ranch.slice(0, 8).forEach((m, i) => { const lab = SPx(m.sp).n + ' ' + m.lv, bw = textW(lab, 6) + 10; if (button('rk' + i, cx2, ry + 9, bw, 12, lab, { size: 6, disabled: S.team.length >= 6 })) { S.team.push(S.ranch.splice(i, 1)[0]); } cx2 += bw + 3; });
   } else {
-    const cols = 6, cw = (w - 16) / cols, chh = 46;
+    const cols = 8, cw = (w - 16) / cols, chh = 38;
     DEX_ORDER.forEach((k, i) => {
       const cx2 = x + 8 + (i % cols) * cw, cy2 = y + 28 + Math.floor(i / cols) * (chh + 2), st = S.dex[k] || 0, sel = M.sel === k;
       panel(cx2, cy2, cw - 3, chh, sel ? PAN.teal : { fill: '#221a2c', out: '#120c18', hi: 'rgba(255,255,255,0.05)', lo: 'rgba(0,0,0,0.3)' });
-      const s = ART.cr[k].idle[0], sc = Math.min(1, (cw - 8) / s.W, 30 / s.H);
-      UI.globalAlpha = st ? 1 : 0.18; UI.drawImage(st ? s.c : s.w, R(cx2 + (cw - 3) / 2 - s.W * sc / 2), R(cy2 + 34 - s.H * sc), s.W * sc, s.H * sc); UI.globalAlpha = 1;
-      text(st ? SPx(k).n : '???', cx2 + (cw - 3) / 2, cy2 + 36, { size: 6, align: 'center', color: st === 2 ? '#fbf3e0' : '#9a8ea8' });
+      const s = ART.cr[k].idle[0], sc = Math.min(1, (cw - 8) / s.W, 24 / s.H);
+      UI.globalAlpha = st ? 1 : 0.18; UI.drawImage(st ? s.c : s.w, R(cx2 + (cw - 3) / 2 - s.W * sc / 2), R(cy2 + 28 - s.H * sc), s.W * sc, s.H * sc); UI.globalAlpha = 1;
+      text(st ? SPx(k).n : '???', cx2 + (cw - 3) / 2, cy2 + 29, { size: 6, align: 'center', color: st === 2 ? '#fbf3e0' : '#9a8ea8' });
       text('#' + (i + 1), cx2 + 3, cy2 + 2, { size: 6, color: '#7a6e88' }); if (st === 2) icon('esfera', cx2 + cw - 15, cy2 + 2);
       if (inRect(cx2, cy2, cw - 3, chh) && In.mclick) { M.sel = k; Snd.play('click'); }
     });
     const caught = DEX_ORDER.filter(k => S.dex[k] === 2).length, seen = DEX_ORDER.filter(k => S.dex[k]).length;
-    text('Vistas: ' + seen + '/11   Capturadas: ' + caught + '/11', x + w - 8, y + 12, { size: 7, align: 'right', color: '#ffe070' });
-    const k = M.sel, dy = y + 28 + 2 * (chh + 2) + 2;
+    text('Vistas: ' + seen + '/' + DEX_ORDER.length + '   Capturadas: ' + caught + '/' + DEX_ORDER.length, x + w - 8, y + 12, { size: 7, align: 'right', color: '#ffe070' });
+    const k = M.sel, dy = y + 28 + 3 * (chh + 2) + 2;
     if (k) {
       const st = S.dex[k] || 0, sp = SPx(k);
       if (!st) text('Você ainda não viu essa criatura.', x + 10, dy + 4, { size: 7, color: '#9a8ea8' });
@@ -263,9 +263,9 @@ function drawTeam(M) {
         text(sp.n, x + 10, dy + 2, { size: 9, bold: true }); chip(TYPES[sp.t].n, x + 14 + textW(sp.n, 9, true), dy + 3, TYPES[sp.t].c);
         wrapText(sp.desc, w - 20, 7).forEach((l, i) => text(l, x + 10, dy + 14 + i * 9, { size: 7, color: '#d8ccdc' }));
         text('Onde vive: ' + where, x + 10, dy + 34, { size: 6, color: '#b8acc4' });
-        text('Habilidades: ' + sp.ab.map(a => ABIL[a].n + ' (' + ABIL[a].d.toLowerCase() + ')').join(' · '), x + 10, dy + 42, { size: 6, color: '#ffe070' });
+        const hl = wrapText('Habilidades: ' + (sp.ab.length ? sp.ab.map(a => ABIL[a].n + ' (' + ABIL[a].d.toLowerCase() + ')').join(' · ') : 'nenhuma ainda'), w - 20, 6); hl.forEach((l, i) => text(l, x + 10, dy + 42 + i * 7, { size: 6, color: '#ffe070' }));
         const ev = sp.evo ? 'Evolui para ' + (S.dex[sp.evo.to] ? SPx(sp.evo.to).n : '???') + ' no nível ' + sp.evo.lv : 'Não evolui';
-        text(ev, x + 10, dy + 50, { size: 6, color: '#8ad4f4' });
+        text(ev, x + 10, dy + 43 + hl.length * 7, { size: 6, color: '#8ad4f4' });
       }
     } else text('Clique numa criatura pra ver os detalhes.', x + 10, dy + 4, { size: 7, color: '#9a8ea8' });
   }
@@ -276,7 +276,7 @@ function drawMap(M) {
   const sc = Math.min((w - 12) / W.mini.width, (h - (M.travel ? 34 : 22)) / W.mini.height), mw = W.mini.width * sc, mh = W.mini.height * sc, mx = R(x + w / 2 - mw / 2), my = y + 12;
   UI.drawImage(W.mini, mx, my, mw, mh);
   const toM = (wx, wy) => [mx + wx / 8 * sc, my + wy / 8 * sc];
-  for (const k in BIOMES) { const B = BIOMES[k]; if (!B.cx) continue; const [px, py] = toM(B.cx, B.cy + (k === 'mordor' ? 0 : 160)); text(B.n + (k === 'mordor' ? ' (bloqueado)' : ''), px, py, { size: 6, align: 'center', color: k === 'mordor' ? '#c890ff' : '#fbf3e0' }); }
+  for (const k in BIOMES) { const B = BIOMES[k]; if (!B.cx) continue; const [px, py] = toM(B.cx, B.cy + (k === 'mordor' ? 0 : 160)); text(B.n + (k === 'mordor' && !S.flags.hardmode ? ' (bloqueado)' : ''), px, py, { size: 6, align: 'center', color: k === 'mordor' ? '#c890ff' : '#fbf3e0' }); }
   { const I = ISLANDS[0], [px, py] = toM(I.x, I.y + 240); text(BIOMES.island.n, px, py, { size: 6, align: 'center', color: '#ff9ac8' }); }
   for (const sh of W.shrines) { const [px, py] = toM(sh.x, sh.y), done = S.shrines.includes(sh.biome); UI.fillStyle = '#120c18'; UI.fillRect(R(px) - 2, R(py) - 2, 5, 5); UI.fillStyle = done ? SHRINE_COL[sh.biome] : '#6a5e78'; UI.fillRect(R(px) - 1, R(py) - 1, 3, 3); }
   for (const vl of W.villages) { const [px, py] = toM(vl.x, vl.y); UI.fillStyle = '#120c18'; UI.fillRect(R(px) - 3, R(py) - 3, 7, 6); UI.fillStyle = '#e8c88a'; UI.fillRect(R(px) - 2, R(py) - 2, 5, 4); UI.fillStyle = '#b8463a'; UI.fillRect(R(px) - 2, R(py) - 3, 5, 1); }
@@ -402,7 +402,7 @@ function tick(dt) {
   Cam.x = clamp(Cam.x, 0, WW - V.W); Cam.y = clamp(Cam.y, 0, WH - V.H);
   drawWorld(Cam.x + (Math.random() - 0.5) * sh, Cam.y + (Math.random() - 0.5) * sh, G.t);
   present();
-  drawHUD(G.t);
+  drawHUD(G.t); drawBossBar();
   if (G.menu) drawMenu();
   drawDialog();
   if (G.evo) drawEvo(dt);

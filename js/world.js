@@ -153,7 +153,7 @@ class World {
     if (TREES[k]) { o.r = 4; o.harvest = 'tree'; }
     else if (k === 'bamboo') { o.r = 5; o.harvest = 'bamboo'; }
     else if (k === 'boulder') { o.r = 10; o.harvest = 'boulder'; }
-    else if (k === 'rockM' || k === 'icerock' || k === 'darkrock') { o.r = 5; o.harvest = k === 'darkrock' ? null : 'rock'; }
+    else if (k === 'rockM' || k === 'icerock' || k === 'darkrock') { o.r = 5; o.harvest = k === 'darkrock' ? 'cristal' : 'rock'; }
     else if (k === 'berry' || k === 'snowberry' || k === 'dryberry') { o.r = 5; o.harvest = 'berry'; o.plain = { berry: 'bush', snowberry: 'snowbush', dryberry: 'drybush' }[k]; o.full = o.spr; o.empty = pick(P[o.plain]); }
     else if (k === 'bush' || k === 'snowbush' || k === 'drybush') o.r = 5;
     else if (k === 'stick' || k === 'pebble') { o.harvest = k; o.flat = true; }
